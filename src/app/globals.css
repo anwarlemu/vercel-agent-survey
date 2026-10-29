@@ -72,6 +72,87 @@ button {
   z-index: 1;
 }
 
+/* Load: the room shows first, the moment it has drawn its first frame; then
+   everything else (text, ticker, dot field) comes in together in one motion.
+   Until the room is ready the text waits, with a two-second fallback so it
+   still appears if the script is slow. */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes rise-now {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.intro,
+.lede,
+.foot-left,
+.foot-right,
+.ticker {
+  animation: rise 360ms var(--ease-out) 2000ms both;
+}
+
+html[data-room-ready] .intro,
+html[data-room-ready] .lede,
+html[data-room-ready] .foot-left,
+html[data-room-ready] .foot-right,
+html[data-room-ready] .ticker {
+  animation-name: rise-now;
+  animation-delay: 160ms;
+}
+
+.room {
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
+}
+
+.room[data-ready] {
+  opacity: 1;
+}
+
+.pixels {
+  opacity: 0;
+  transition: opacity 360ms var(--ease-out) 160ms;
+}
+
+html[data-room-ready] .pixels[data-ready] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro,
+  .lede,
+  .foot-left,
+  .foot-right,
+  .ticker,
+  html[data-room-ready] .intro,
+  html[data-room-ready] .lede,
+  html[data-room-ready] .foot-left,
+  html[data-room-ready] .foot-right,
+  html[data-room-ready] .ticker {
+    animation: fade 200ms ease both;
+    animation-delay: 0ms;
+  }
+  .room,
+  .pixels {
+    transition-duration: 200ms;
+    transition-delay: 0ms;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Layout */
 
 .page {

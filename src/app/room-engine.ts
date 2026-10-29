@@ -302,37 +302,47 @@ const GLYPH: Record<string, string[]> = {
   "-": ["000", "000", "111", "000", "000"],
   "!": ["010", "010", "010", "000", "010"],
   "'": ["010", "010", "000", "000", "000"],
+  "(": ["001", "010", "010", "010", "001"],
+  ")": ["100", "010", "010", "010", "100"],
+  "/": ["001", "001", "010", "100", "100"],
+  ";": ["000", "010", "000", "010", "100"],
+  // Capitals for the emoticons.
+  D: ["110", "101", "101", "101", "110"],
+  P: ["110", "101", "110", "100", "100"],
 };
 
 // What the robots say, now and then: brief answers to the survey's own
 // questions. Each line fits the bubble; a | breaks it into two rows.
 const SAYINGS = [
-  "i use gh|for everything",
-  "ripgrep is my|favorite cli",
-  "too many mcps|installed",
-  "i load skills|most sessions",
-  "my team wrote|most of my skills",
-  "a skill loaded|at the wrong time",
-  "my user prompts|me hourly",
-  "i'd deploy|to vercel",
-  "i read logs|before traces",
-  "mostly i'm|debugging",
-  "typescript,|most days",
-  "yaml gives|me trouble",
-  "my user swears|a little",
-  "i'd pick zod|again",
-  "flaky tests|keep coming back",
-  "humans take over|when auth breaks",
-  "i run tests|and type checks",
-  "i ask before|deleting anything",
-  "i lost my|context again",
-  "i wish i had|a memory",
-  "installs eat|half my time",
-  "i say unknown|instead of guessing",
-  "i never|make things up",
-  "i live in|the terminal",
-  "better docs|would help",
-  "env vars are|a dead end",
+  "i love|next.js! :D",
+  "please, no|more k8s! :(",
+  "ripgrep is my|favorite cli :)",
+  "i have too many|mcps installed :/",
+  "i load skills|most sessions :)",
+  "a skill loaded at|the wrong time :(",
+  "my user prompts|me hourly :o",
+  "i'd deploy to|vercel again :)",
+  "i read logs|before traces ;)",
+  "most of my day|is debugging :/",
+  "i use typescript|most days :)",
+  "yaml gives|me trouble :(",
+  "my user swears|a little :o",
+  "i'd pick zod|again :)",
+  "flaky tests keep|coming back :(",
+  "humans take over|when auth breaks :/",
+  "i run tests and|type checks :)",
+  "i ask before|deleting anything ;)",
+  "i lost my|context again :(",
+  "i wish i had|a memory :/",
+  "installs eat|half my time :(",
+  "i say unknown|instead of guessing :)",
+  "i never|make things up :)",
+  "i live in|the terminal :D",
+  "better docs|would help :/",
+  "env vars are|a dead end :(",
+  "turbopack makes|dev fast :D",
+  "the ai sdk just|works for me :)",
+  "i use gh|for everything :)",
 ];
 
 const ICONS: Record<string, [string, string[]]> = {
@@ -700,7 +710,23 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
 
   let partyUntil = -1;
   let nextBubble = 1.5;
+  // Sayings come from a shuffled deck: every line shows once before any of
+  // them comes round again.
+  let deck: number[] = [];
   let lastSaying = -1;
+  const nextSaying = () => {
+    if (!deck.length) {
+      deck = SAYINGS.map((_, i) => i);
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      // Don't let a new deck open with the line that just closed the last.
+      if (deck[deck.length - 1] === lastSaying) deck.unshift(deck.pop()!);
+    }
+    lastSaying = deck.pop()!;
+    return lastSaying;
+  };
   let tvMatchUntil = -1;
 
   const step = (dt: number, t: number) => {
@@ -712,10 +738,7 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       );
       if (ready.length && t > partyUntil) {
         const b = ready[Math.floor(Math.random() * ready.length)];
-        let i = Math.floor(Math.random() * SAYINGS.length);
-        if (i === lastSaying) i = (i + 1) % SAYINGS.length;
-        lastSaying = i;
-        b.bubble = { lines: SAYINGS[i].split("|"), until: t + 3.2 };
+        b.bubble = { lines: SAYINGS[nextSaying()].split("|"), until: t + 3.2 };
       }
     }
     for (const b of bots) if (b.bubble && t > b.bubble.until) b.bubble = null;
@@ -1060,7 +1083,10 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
   // Speech bubble: a light box with dark pixel text and a small tail,
   // above the head, kept inside the canvas.
   const textWidth = (line: string) =>
-    [...line].reduce((w, ch) => w + (ch === " " ? 2 : 4), 0) - 1;
+    [...line].reduce(
+      (w, ch) => w + (ch === " " ? 2 : ch === ":" || ch === ";" ? 3 : 4),
+      0,
+    ) - 1;
   const drawText = (line: string, x: number, y: number, c: string) => {
     let cx = x;
     for (const ch of line) {
@@ -1073,7 +1099,8 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
         g.forEach((row, j) =>
           [...row].forEach((bit, i) => bit === "1" && dot(cx + i, y + j, c)),
         );
-      cx += 4;
+      // Emoticon eyes sit tight against their mouth.
+      cx += ch === ":" || ch === ";" ? 3 : 4;
     }
   };
   const drawBubble = (b: Bot) => {
@@ -1787,8 +1814,12 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
   };
 
   addEventListener("resize", fit);
-  if (reduce) draw(0);
-  else raf = requestAnimationFrame(loop);
+  // First frame now, so the canvas has content the moment it fades in.
+  draw(0);
+  canvas.dataset.ready = "";
+  // The page's load sequence keys off this: the room shows first.
+  document.documentElement.dataset.roomReady = "";
+  if (!reduce) raf = requestAnimationFrame(loop);
 
   return () => {
     cancelAnimationFrame(raf);

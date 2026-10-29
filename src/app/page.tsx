@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { LOGOS } from "./logos";
 import { prompt } from "./questions";
 import { Ticker } from "./ticker";
 import { Pixels } from "./pixels";
@@ -40,8 +41,8 @@ export default function Page() {
         <section className="intro">
           <h1 className="title">agent-survey</h1>
           <ul className="logos" aria-label="Agent harnesses">
-            {Array.from({ length: 9 }, (_, i) => (
-              <li key={i} style={{ maskImage: `url(/logos/${i + 1}.png)` }} />
+            {LOGOS.map((src, i) => (
+              <li key={i} style={{ maskImage: `url(${src})` }} />
             ))}
           </ul>
           <p className="credit">

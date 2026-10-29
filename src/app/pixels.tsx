@@ -59,7 +59,13 @@ export function Pixels() {
       const rows = Math.ceil(h / CELL);
       // Quiet zones over the text: strongest bottom left, milder elsewhere.
       const quiet = (nx: number, ny: number) => {
-        const zone = (cx: number, cy: number, rx: number, ry: number, k: number) => {
+        const zone = (
+          cx: number,
+          cy: number,
+          rx: number,
+          ry: number,
+          k: number,
+        ) => {
           const d = Math.hypot((nx - cx) / rx, (ny - cy) / ry);
           return 1 - k * Math.max(0, 1 - d * d);
         };
@@ -79,7 +85,11 @@ export function Pixels() {
           // Each dot breathes on its own rhythm.
           const k = hash(i, j);
           const pulse = 0.7 + 0.3 * Math.sin(t * (0.8 + k) + k * 20);
-          const level = Math.min(1, (n - 0.5) / 0.35) * pulse * 0.9 * quiet(i / cols, j / rows);
+          const level =
+            Math.min(1, (n - 0.5) / 0.35) *
+            pulse *
+            0.9 *
+            quiet(i / cols, j / rows);
           if (level < 0.08) continue;
           const tint = fbm(i * 0.05 - t * 0.05 + 40, j * 0.05 + 20) > 0.72;
           // Four flat steps, no in-between tones, like a dimmed LED panel.
@@ -87,7 +97,12 @@ export function Pixels() {
           ctx.fillStyle = tint
             ? ["#133434", "#1a4a4a", "#226363", "#2a7c7c"][step]
             : ["#1b1b1b", "#242424", "#2e2e2e", "#3a3a3a"][step];
-          ctx.fillRect(i * CELL + (CELL - DOT) / 2, j * CELL + (CELL - DOT) / 2, DOT, DOT);
+          ctx.fillRect(
+            i * CELL + (CELL - DOT) / 2,
+            j * CELL + (CELL - DOT) / 2,
+            DOT,
+            DOT,
+          );
         }
       }
     };
@@ -109,8 +124,9 @@ export function Pixels() {
     };
     addEventListener("resize", onResize);
 
-    if (reduce) draw(0);
-    else raf = requestAnimationFrame(loop);
+    draw(0);
+    canvas.dataset.ready = "";
+    if (!reduce) raf = requestAnimationFrame(loop);
 
     return () => {
       cancelAnimationFrame(raf);
