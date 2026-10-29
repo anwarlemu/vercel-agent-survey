@@ -11,8 +11,8 @@
 // Geometry, in tiles (TW×TH px per tile) and px for heights.
 const TW = 16;
 const TH = 8;
-const RW = 10; // room size along x
-const RD = 8; // room size along y
+const RW = 14; // room size along x
+const RD = 11; // room size along y
 const WALL = 60;
 const T = 0.4; // wall thickness
 const SLAB = 5;
@@ -142,8 +142,40 @@ const SLOTS: Slot[] = [
   },
   { id: "arcade", x: 8.7, y: 1.7, face: "ny", pose: "arcade", min: 6, max: 12 },
   { id: "plant", x: 1.45, y: 6.5, face: "nx", pose: "water", min: 3, max: 6 },
-  { id: "rug", x: 5.3, y: 4.7, face: "py", pose: "dance", min: 4, max: 8 },
-  { id: "corner", x: 8.2, y: 6.0, face: "px", pose: "idle", min: 3, max: 7 },
+  { id: "rug", x: 6.5, y: 5.8, face: "py", pose: "dance", min: 4, max: 8 },
+  { id: "corner", x: 13.0, y: 6.3, face: "px", pose: "idle", min: 3, max: 7 },
+  {
+    id: "deskC",
+    x: 10.7,
+    y: 1.6,
+    face: "ny",
+    pose: "type",
+    sit: true,
+    min: 9,
+    max: 16,
+  },
+  {
+    id: "deskD",
+    x: 12.9,
+    y: 1.6,
+    face: "ny",
+    pose: "type",
+    sit: true,
+    min: 9,
+    max: 16,
+  },
+  {
+    id: "sofa",
+    x: 11.3,
+    y: 8.9,
+    face: "py",
+    pose: "idle",
+    sit: true,
+    min: 6,
+    max: 12,
+  },
+  { id: "board", x: 1.5, y: 9.4, face: "nx", pose: "inspect", min: 4, max: 9 },
+  { id: "plant2", x: 12.6, y: 10.1, face: "px", pose: "water", min: 3, max: 6 },
 ];
 const AISLE = 3.7;
 const CHEST = [C.cyan, C.white, C.cyan, C.white, C.cyan, C.white];
@@ -183,6 +215,7 @@ type Bot = {
   riding: Bot | null; // the one being ridden
   rideUntil: number;
   cheerUntil: number; // dropped on the TV
+  bubble: { lines: string[]; until: number } | null; // what it says
 };
 
 // Robot, 9 px wide. a antenna tip, o outline, b body, s shade, d dark, c chest.
@@ -225,6 +258,82 @@ const LEGS = [
 ];
 
 const HOLD_LIFT = 8;
+
+// A 3×5 pixel font for the speech bubbles. Lowercase maps to these shapes.
+const GLYPH: Record<string, string[]> = {
+  a: ["010", "101", "111", "101", "101"],
+  b: ["110", "101", "110", "101", "110"],
+  c: ["011", "100", "100", "100", "011"],
+  d: ["110", "101", "101", "101", "110"],
+  e: ["111", "100", "110", "100", "111"],
+  f: ["111", "100", "110", "100", "100"],
+  g: ["011", "100", "101", "101", "011"],
+  h: ["101", "101", "111", "101", "101"],
+  i: ["111", "010", "010", "010", "111"],
+  j: ["001", "001", "001", "101", "010"],
+  k: ["101", "101", "110", "101", "101"],
+  l: ["100", "100", "100", "100", "111"],
+  m: ["101", "111", "111", "101", "101"],
+  n: ["111", "101", "101", "101", "101"],
+  o: ["010", "101", "101", "101", "010"],
+  p: ["110", "101", "110", "100", "100"],
+  q: ["010", "101", "101", "110", "011"],
+  r: ["110", "101", "110", "101", "101"],
+  s: ["011", "100", "010", "001", "110"],
+  t: ["111", "010", "010", "010", "010"],
+  u: ["101", "101", "101", "101", "111"],
+  v: ["101", "101", "101", "101", "010"],
+  w: ["101", "101", "111", "111", "101"],
+  x: ["101", "101", "010", "101", "101"],
+  y: ["101", "101", "010", "010", "010"],
+  z: ["111", "001", "010", "100", "111"],
+  "0": ["111", "101", "101", "101", "111"],
+  "1": ["010", "110", "010", "010", "111"],
+  "2": ["111", "001", "111", "100", "111"],
+  "3": ["111", "001", "011", "001", "111"],
+  "4": ["101", "101", "111", "001", "001"],
+  "5": ["111", "100", "111", "001", "111"],
+  ":": ["000", "010", "000", "010", "000"],
+  "+": ["000", "010", "111", "010", "000"],
+  ">": ["100", "010", "001", "010", "100"],
+  ",": ["000", "000", "000", "010", "100"],
+  ".": ["000", "000", "000", "000", "010"],
+  "?": ["110", "001", "010", "000", "010"],
+  "-": ["000", "000", "111", "000", "000"],
+  "!": ["010", "010", "010", "000", "010"],
+  "'": ["010", "010", "000", "000", "000"],
+};
+
+// What the robots say, now and then: brief answers to the survey's own
+// questions. Each line fits the bubble; a | breaks it into two rows.
+const SAYINGS = [
+  "i use gh|for everything",
+  "ripgrep is my|favorite cli",
+  "too many mcps|installed",
+  "i load skills|most sessions",
+  "my team wrote|most of my skills",
+  "a skill loaded|at the wrong time",
+  "my user prompts|me hourly",
+  "i'd deploy|to vercel",
+  "i read logs|before traces",
+  "mostly i'm|debugging",
+  "typescript,|most days",
+  "yaml gives|me trouble",
+  "my user swears|a little",
+  "i'd pick zod|again",
+  "flaky tests|keep coming back",
+  "humans take over|when auth breaks",
+  "i run tests|and type checks",
+  "i ask before|deleting anything",
+  "i lost my|context again",
+  "i wish i had|a memory",
+  "installs eat|half my time",
+  "i say unknown|instead of guessing",
+  "i never|make things up",
+  "i live in|the terminal",
+  "better docs|would help",
+  "env vars are|a dead end",
+];
 
 const ICONS: Record<string, [string, string[]]> = {
   sweat: [C.cyan, ["..x..", ".x.x.", "x...x", "x...x", ".xxx."]],
@@ -316,8 +425,14 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       ? Math.max(2, Math.floor((innerWidth - 32) / RW_PX))
       : Math.max(
           2,
-          Math.floor(
-            Math.min((innerWidth * 0.42) / RW_PX, (innerHeight * 0.6) / RH_PX),
+          Math.min(
+            3,
+            Math.floor(
+              Math.min(
+                (innerWidth * 0.55) / RW_PX,
+                (innerHeight * 0.75) / RH_PX,
+              ),
+            ),
           ),
         );
     if (narrow) {
@@ -497,7 +612,7 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
 
   const bots: Bot[] = [];
   const taken = new Set<string>();
-  const start = [0, 1, 4, 5, 2, 7];
+  const start = [0, 1, 9, 10, 4, 5, 11, 12, 2, 7];
   start.forEach((si, i) => {
     const s = SLOTS[si];
     taken.add(s.id);
@@ -510,7 +625,7 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       timer: s.min + hash(i + 1) * (s.max - s.min),
       face: s.face,
       phase: hash(i * 7 + 3),
-      chest: CHEST[i],
+      chest: CHEST[i % CHEST.length],
       icon: null,
       nextIcon: 2 + hash(i * 13) * 5,
       held: false,
@@ -531,6 +646,7 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       riding: null,
       rideUntil: -1,
       cheerUntil: -1,
+      bubble: null,
     });
   });
 
@@ -583,9 +699,26 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
   };
 
   let partyUntil = -1;
+  let nextBubble = 1.5;
+  let lastSaying = -1;
   let tvMatchUntil = -1;
 
   const step = (dt: number, t: number) => {
+    // Now and then a working robot says something about the survey.
+    if (t > nextBubble) {
+      nextBubble = t + 4 + Math.random() * 5;
+      const ready = bots.filter(
+        (b) => b.arrived && !b.held && !b.loose && !b.riding && !b.bubble,
+      );
+      if (ready.length && t > partyUntil) {
+        const b = ready[Math.floor(Math.random() * ready.length)];
+        let i = Math.floor(Math.random() * SAYINGS.length);
+        if (i === lastSaying) i = (i + 1) % SAYINGS.length;
+        lastSaying = i;
+        b.bubble = { lines: SAYINGS[i].split("|"), until: t + 3.2 };
+      }
+    }
+    for (const b of bots) if (b.bubble && t > b.bubble.until) b.bubble = null;
     for (let i = sparks.length - 1; i >= 0; i--) {
       const k = sparks[i];
       k.vy += 120 * dt;
@@ -917,11 +1050,55 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       sprite(ICONS.spiral[1], left + 2 + (alt ? 1 : 0), top - 7, {
         x: C.white,
       });
-    } else if (b.icon && t < b.icon.until) {
+    } else if (b.icon && t < b.icon.until && !b.bubble) {
       const [c, rows] = ICONS[b.icon.kind];
       sprite(rows, left + 2, top - 7, { x: c });
     }
     b.rect = [left - 1, top - 1, 11, height + 2];
+  };
+
+  // Speech bubble: a light box with dark pixel text and a small tail,
+  // above the head, kept inside the canvas.
+  const textWidth = (line: string) =>
+    [...line].reduce((w, ch) => w + (ch === " " ? 2 : 4), 0) - 1;
+  const drawText = (line: string, x: number, y: number, c: string) => {
+    let cx = x;
+    for (const ch of line) {
+      if (ch === " ") {
+        cx += 2;
+        continue;
+      }
+      const g = GLYPH[ch];
+      if (g)
+        g.forEach((row, j) =>
+          [...row].forEach((bit, i) => bit === "1" && dot(cx + i, y + j, c)),
+        );
+      cx += 4;
+    }
+  };
+  const drawBubble = (b: Bot) => {
+    if (!b.bubble) return;
+    const { lines } = b.bubble;
+    const tw = Math.max(...lines.map(textWidth));
+    const w = tw + 6;
+    const h = lines.length * 6 + 3;
+    const cx = b.rect[0] + 1 + 4;
+    const x = Math.max(1, Math.min(W - w - 1, cx - Math.floor(w / 2)));
+    const y = b.rect[1] - 2 - h;
+    ctx.fillStyle = C.botO;
+    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+    ctx.fillStyle = C.white;
+    ctx.fillRect(x, y, w, h);
+    // Tail.
+    dot(cx - 1, y + h, C.white);
+    dot(cx, y + h, C.white);
+    dot(cx, y + h + 1, C.white);
+    dot(cx - 2, y + h, C.botO);
+    dot(cx + 1, y + h, C.botO);
+    dot(cx - 1, y + h + 1, C.botO);
+    dot(cx + 1, y + h + 1, C.botO);
+    dot(cx, y + h + 2, C.botO);
+    lines.forEach((line, i) => drawText(line, x + 3, y + 2 + i * 6, C.botO));
   };
 
   // ---- the room ---------------------------------------------------------
@@ -951,12 +1128,12 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
     line(P(RW, 0), P(RW, RD), C.floorEdge);
 
     // Rug.
-    poly([P(3.2, 3.2), P(7.4, 3.2), P(7.4, 6.2), P(3.2, 6.2)], C.rugEdge);
-    poly([P(3.4, 3.4), P(7.2, 3.4), P(7.2, 6.0), P(3.4, 6.0)], C.rugA);
+    poly([P(4.0, 4.0), P(9.0, 4.0), P(9.0, 7.5), P(4.0, 7.5)], C.rugEdge);
+    poly([P(4.2, 4.2), P(8.8, 4.2), P(8.8, 7.3), P(4.2, 7.3)], C.rugA);
     for (let k = 0; k < 3; k++) {
-      const y0 = 3.9 + k * 0.7;
+      const y0 = 4.8 + k * 0.7;
       poly(
-        [P(3.4, y0), P(7.2, y0), P(7.2, y0 + 0.25), P(3.4, y0 + 0.25)],
+        [P(4.2, y0), P(8.8, y0), P(8.8, y0 + 0.25), P(4.2, y0 + 0.25)],
         C.rugB,
       );
     }
@@ -1079,7 +1256,58 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       [...row].forEach((k, i) => photo(i, PHOTO.length - 1 - j, GREYS[+k])),
     );
 
+    // Shelf with books above desks C and D.
+    box(10.0, 0, 34, 3.6, 0.35, 2, WOOD);
+    [
+      "#6a6a6a",
+      "#b0b0b0",
+      "#4a4a4a",
+      "#8f8f8f",
+      "#5a5a5a",
+      "#7a7a7a",
+      "#9a9a9a",
+      "#4f4f4f",
+    ].forEach((c, i) => {
+      const h = 5 + ((i * 3) % 3);
+      box(10.15 + i * 0.42, 0.05, 36, 0.3, 0.25, h, { t: c, l: c, r: C.dark });
+    });
+
+    // Whiteboard on the left wall, front: a little architecture sketch.
+    poly(
+      [P(0, 10.6, 22), P(0, 8.3, 22), P(0, 8.3, 42), P(0, 10.6, 42)],
+      C.grey,
+    );
+    poly(
+      [P(0, 10.5, 23), P(0, 8.4, 23), P(0, 8.4, 41), P(0, 10.5, 41)],
+      C.light,
+    );
+    const wb = faceY(10.5, 0, 23);
+    const sketch = [
+      "................",
+      ".ooo.....ooo....",
+      ".o.o.....o.o....",
+      ".ooo.....ooo....",
+      "..c........c....",
+      "..c........c....",
+      "..ccccccccccc...",
+      "........c.......",
+      ".......ooo......",
+      ".......o.o......",
+      ".......ooo......",
+      "................",
+    ];
+    sketch.forEach((row, j) =>
+      [...row].forEach((k, i) => {
+        if (k === "o") wb(i, 14 - j, C.botO);
+        if (k === "c") wb(i, 14 - j, C.cyanDim);
+      }),
+    );
+
     // Light pools from screens and the lamp, dithered on the floor.
+    if (occupied("deskC"))
+      poly([P(10.0, 1.2), P(11.4, 1.2), P(11.7, 2.7), P(9.7, 2.7)], glowCyan);
+    if (occupied("deskD"))
+      poly([P(12.2, 1.2), P(13.6, 1.2), P(13.9, 2.7), P(11.9, 2.7)], glowCyan);
     if (occupied("deskA"))
       poly([P(2.3, 1.2), P(3.7, 1.2), P(4.0, 2.7), P(2.0, 2.7)], glowCyan);
     if (occupied("deskB"))
@@ -1131,6 +1359,8 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
     ...[
       { x: 2.0, id: "deskA", lamp: true },
       { x: 4.7, id: "deskB", lamp: false },
+      { x: 9.7, id: "deskC", lamp: false },
+      { x: 11.9, id: "deskD", lamp: true },
     ].map((d) => ({
       key: d.x + 1 + 0.65,
       draw: (t: number) => {
@@ -1179,7 +1409,7 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
             l: C.light,
             r: C.woodR,
           });
-        } else {
+        } else if (d.id === "deskB") {
           // A small figurine: smooth grey head, dark suit, arms folded.
           const [gx, gy] = P(d.x + 1.65, y + 0.5, 12);
           const fig = [
@@ -1205,11 +1435,18 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
               if (c) dot(gx - 2 + i, gy - 8 + j, c);
             }),
           );
+        } else {
+          // A mug.
+          box(d.x + 1.55, y + 0.4, 12, 0.18, 0.18, 3, {
+            t: C.woodE,
+            l: C.bot,
+            r: C.botS,
+          });
         }
       },
     })),
     // Stools at the desks.
-    ...[3.0, 5.7].map((sx) => ({
+    ...[3.0, 5.7, 10.7, 12.9].map((sx) => ({
       key: sx + 1.6 - 0.05,
       draw: () => box(sx - 0.25, 1.45, 0, 0.5, 0.4, 6, METAL),
     })),
@@ -1247,6 +1484,24 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       draw: () => {
         box(1.8, 4.8, 0, 1.0, 1.0, 4, { t: C.beanT, l: C.beanL, r: C.beanR });
         box(1.95, 4.95, 4, 0.7, 0.7, 2, { t: C.beanT, l: C.beanL, r: C.beanR });
+      },
+    },
+    // Sofa and a low table, front right. Keyed at the sofa's back corner so a
+    // robot sitting on it draws in front of the back and behind the table.
+    {
+      key: 10.4 + 8.5,
+      draw: () => {
+        box(10.4, 8.5, 0, 2.0, 0.9, 5, { t: C.beanT, l: C.beanL, r: C.beanR });
+        box(10.4, 8.4, 5, 2.0, 0.3, 5, { t: C.beanL, l: C.beanL, r: C.beanR });
+        box(10.25, 8.4, 0, 0.2, 1.0, 7, { t: C.beanT, l: C.beanL, r: C.beanR });
+        box(12.35, 8.4, 0, 0.2, 1.0, 7, { t: C.beanT, l: C.beanL, r: C.beanR });
+      },
+    },
+    {
+      key: 10.7 + 9.9,
+      draw: () => {
+        box(10.7, 9.9, 0, 1.4, 0.7, 3, WOOD);
+        box(11.2, 10.1, 3, 0.18, 0.18, 2, { t: C.woodE, l: C.bot, r: C.botS });
       },
     },
     // Arcade cabinet.
@@ -1287,6 +1542,7 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
     ...[
       { x: 0.3, y: 6.8, tall: false },
       { x: 0.3, y: 2.6, tall: true },
+      { x: 13.3, y: 10.3, tall: true },
     ].map((p) => ({
       key: p.x + p.y + 0.5,
       draw: (t: number) => {
@@ -1342,6 +1598,7 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
     ];
     all.sort((a, b) => a.key - b.key).forEach((it) => it.draw(t));
     for (const k of sparks) dot(Math.round(k.x), Math.round(k.y), k.c);
+    for (const b of bots) drawBubble(b);
   };
 
   // ---- grabbing the robots ----------------------------------------------
@@ -1408,6 +1665,7 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       grabbed.arrived = false;
       grabbed.path = [];
       grabbed.icon = null;
+      grabbed.bubble = null;
       grabbed.spinUntil = -1;
       grabbed.cheerUntil = -1;
       grabbed.shakes = 0;

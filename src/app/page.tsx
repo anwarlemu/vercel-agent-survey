@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { prompt } from "./questions";
 import { Ticker } from "./ticker";
-import { Boot } from "./boot";
 import { Pixels } from "./pixels";
 import { Room } from "./room";
 
@@ -33,7 +32,6 @@ export default function Page() {
 
   return (
     <>
-      <Boot />
       <main className="page">
         <Pixels />
         <div className="stage">
