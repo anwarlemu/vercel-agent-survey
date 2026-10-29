@@ -215,7 +215,7 @@ type Bot = {
   riding: Bot | null; // the one being ridden
   rideUntil: number;
   cheerUntil: number; // dropped on the TV
-  bubble: { lines: string[]; until: number } | null; // what it says
+  bubble: { lines: string[]; icon?: string; until: number } | null; // what it says
 };
 
 // Robot, 9 px wide. a antenna tip, o outline, b body, s shade, d dark, c chest.
@@ -311,38 +311,231 @@ const GLYPH: Record<string, string[]> = {
   P: ["110", "101", "110", "100", "100"],
 };
 
+// 9×9 pixel icons a saying can open with, as :name: — drawn beside the text.
+const BUBBLE_ICONS: Record<string, string[]> = {
+  vercel: [
+    "....1....",
+    "....1....",
+    "...111...",
+    "...111...",
+    "..11111..",
+    "..11111..",
+    ".1111111.",
+    ".1111111.",
+    "111111111",
+  ],
+  next: [
+    "..11111..",
+    ".1.....1.",
+    "1.1...1.1",
+    "1.11..1.1",
+    "1.1.1.1.1",
+    "1.1..11.1",
+    "1.1...1.1",
+    ".1.....1.",
+    "..11111..",
+  ],
+  claude: [
+    "....1....",
+    ".1..1..1.",
+    "..1.1.1..",
+    "...111...",
+    "1111.1111",
+    "...111...",
+    "..1.1.1..",
+    ".1..1..1.",
+    "....1....",
+  ],
+  k8s: [
+    "...111...",
+    "..1.1.1..",
+    ".1..1..1.",
+    "1...1...1",
+    "1111.1111",
+    "1...1...1",
+    ".1..1..1.",
+    "..1.1.1..",
+    "...111...",
+  ],
+  ts: [
+    "111111111",
+    "1.......1",
+    "1.11111.1",
+    "1...1...1",
+    "1...1...1",
+    "1...1...1",
+    "1...1...1",
+    "1.......1",
+    "111111111",
+  ],
+  yaml: [
+    ".111111..",
+    ".1....11.",
+    ".1....1.1",
+    ".1......1",
+    ".1.1111.1",
+    ".1......1",
+    ".1.1111.1",
+    ".1......1",
+    ".11111111",
+  ],
+  zod: [
+    "111111111",
+    "1.......1",
+    "1.11111.1",
+    "1....1..1",
+    "1...1...1",
+    "1..1....1",
+    "1.11111.1",
+    ".1.....1.",
+    "...111...",
+  ],
+  search: [
+    "..111....",
+    ".1...1...",
+    "1.....1..",
+    "1.....1..",
+    "1.....1..",
+    ".1...1...",
+    "..111.1..",
+    "......11.",
+    ".......11",
+  ],
+  gh: [
+    ".1.....1.",
+    ".11...11.",
+    ".1111111.",
+    "111111111",
+    "11.111.11",
+    "111111111",
+    "111.1.111",
+    ".1111111.",
+    "..11111..",
+  ],
+  term: [
+    "111111111",
+    "1.......1",
+    "1.1.....1",
+    "1..1....1",
+    "1.1.....1",
+    "1.......1",
+    "1...111.1",
+    "1.......1",
+    "111111111",
+  ],
+  bolt: [
+    "....111..",
+    "...111...",
+    "..111....",
+    ".1111111.",
+    "....111..",
+    "...111...",
+    "..111....",
+    ".111.....",
+    ".1.......",
+  ],
+  sparkle: [
+    "....1....",
+    "....1....",
+    "...111...",
+    "..11111..",
+    "111111111",
+    "..11111..",
+    "...111...",
+    "....1....",
+    "....1....",
+  ],
+  check: [
+    "111111111",
+    "1.......1",
+    "1......11",
+    "1.....11.",
+    "1.1..11.1",
+    "1.11.1..1",
+    "1..11...1",
+    "1.......1",
+    "111111111",
+  ],
+  bug: [
+    ".1.....1.",
+    "..1...1..",
+    "..11111..",
+    ".1.1.1.1.",
+    "1.11111.1",
+    "..11111..",
+    "1.11111.1",
+    ".1.....1.",
+    "..1...1..",
+  ],
+  chip: [
+    ".1.1.1.1.",
+    "111111111",
+    "1.......1",
+    "1.11111.1",
+    "1.1...1.1",
+    "1.11111.1",
+    "1.......1",
+    "111111111",
+    ".1.1.1.1.",
+  ],
+  doc: [
+    ".111111..",
+    ".1....11.",
+    ".1....111",
+    ".1......1",
+    ".1.111..1",
+    ".1......1",
+    ".1.1111.1",
+    ".1......1",
+    ".11111111",
+  ],
+  plug: [
+    "..1...1..",
+    "..1...1..",
+    ".1111111.",
+    ".1111111.",
+    ".1111111.",
+    "..11111..",
+    "...111...",
+    "....1....",
+    "....1....",
+  ],
+};
+
 // What the robots say, now and then: brief answers to the survey's own
 // questions. Each line fits the bubble; a | breaks it into two rows.
 const SAYINGS = [
-  "i love|next.js! :D",
-  "please, no|more k8s! :(",
-  "ripgrep is my|favorite cli",
-  "i have too many|mcps installed",
+  ":next:i love|next.js! :D",
+  ":claude:i love the claude|agent sdk",
+  ":k8s:please, no|more k8s! :(",
+  ":search:ripgrep is my|favorite cli",
+  ":plug:i have too many|mcps installed",
   "i load skills|most sessions",
+  "my team wrote|most of my skills",
   "a skill loaded at|the wrong time",
   "my user prompts|me hourly",
-  "i'd deploy to|vercel again",
+  ":vercel:i'd deploy to|vercel again",
   "i read logs|before traces",
-  "most of my day|is debugging",
-  "i use typescript|most days",
-  "yaml gives|me trouble :(",
+  ":bug:most of my day|is debugging",
+  ":ts:i use typescript|most days",
+  ":yaml:yaml gives|me trouble :(",
   "my user swears|a little",
-  "i'd pick zod|again",
-  "flaky tests keep|coming back :(",
+  ":zod:i'd pick zod|again",
+  ":check:flaky tests keep|coming back :(",
   "humans take over|when auth breaks",
-  "i run tests and|type checks",
+  ":check:i run tests and|type checks",
   "i ask before|deleting anything",
-  "i lost my|context again :(",
-  "i wish i had|a memory :/",
+  ":chip:i lost my|context again :(",
+  ":chip:i wish i had|a memory :/",
   "installs eat|half my time",
   "i say unknown|instead of guessing",
   "i never|make things up",
-  "i live in|the terminal :D",
-  "better docs|would help",
+  ":term:i live in|the terminal :D",
+  ":doc:better docs|would help",
   "env vars are|a dead end",
-  "turbopack makes|dev fast :D",
-  "the ai sdk just|works for me",
-  "i use gh|for everything",
+  ":bolt:turbopack makes|dev fast :D",
+  ":sparkle:the ai sdk just|works for me",
+  ":gh:i use gh|for everything",
 ];
 
 const ICONS: Record<string, [string, string[]]> = {
@@ -738,7 +931,13 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
       );
       if (ready.length && t > partyUntil) {
         const b = ready[Math.floor(Math.random() * ready.length)];
-        b.bubble = { lines: SAYINGS[nextSaying()].split("|"), until: t + 3.2 };
+        const raw = SAYINGS[nextSaying()];
+        const m = raw.match(/^:(\w+):/);
+        b.bubble = {
+          lines: raw.slice(m ? m[0].length : 0).split("|"),
+          icon: m?.[1],
+          until: t + 3.2,
+        };
       }
     }
     for (const b of bots) if (b.bubble && t > b.bubble.until) b.bubble = null;
@@ -1105,10 +1304,12 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
   };
   const drawBubble = (b: Bot) => {
     if (!b.bubble) return;
-    const { lines } = b.bubble;
+    const { lines, icon } = b.bubble;
+    const glyphs = icon ? BUBBLE_ICONS[icon] : undefined;
+    const iw = glyphs ? 9 + 3 : 0;
     const tw = Math.max(...lines.map(textWidth));
-    const w = tw + 6;
-    const h = lines.length * 6 + 3;
+    const w = tw + iw + 6;
+    const h = Math.max(lines.length * 6 + 3, glyphs ? 13 : 0);
     const cx = b.rect[0] + 1 + 4;
     const x = Math.max(1, Math.min(W - w - 1, cx - Math.floor(w / 2)));
     const y = b.rect[1] - 2 - h;
@@ -1125,7 +1326,16 @@ export function startRoom(canvas: HTMLCanvasElement): () => void {
     dot(cx - 1, y + h + 1, C.botO);
     dot(cx + 1, y + h + 1, C.botO);
     dot(cx, y + h + 2, C.botO);
-    lines.forEach((line, i) => drawText(line, x + 3, y + 2 + i * 6, C.botO));
+    if (glyphs) {
+      const iy = y + Math.floor((h - 9) / 2);
+      glyphs.forEach((row, j) =>
+        [...row].forEach(
+          (bit, i) => bit === "1" && dot(x + 3 + i, iy + j, C.botO),
+        ),
+      );
+    }
+    const ty = y + Math.floor((h - (lines.length * 6 - 1)) / 2);
+    lines.forEach((line, i) => drawText(line, x + 3 + iw, ty + i * 6, C.botO));
   };
 
   // ---- the room ---------------------------------------------------------
