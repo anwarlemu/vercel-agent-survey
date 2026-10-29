@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { prompt } from "./questions";
 import { Ticker } from "./ticker";
+import { Boot } from "./boot";
 import { Pixels } from "./pixels";
 import { Room } from "./room";
 
@@ -32,6 +33,7 @@ export default function Page() {
 
   return (
     <>
+      <Boot />
       <main className="page">
         <Pixels />
         <div className="stage">
@@ -120,25 +122,31 @@ function Modal({
   title,
   children,
 }: {
-  ref: React.Ref<HTMLDialogElement>;
+  ref: React.RefObject<HTMLDialogElement | null>;
   title: string;
   children: React.ReactNode;
 }) {
+  // Close on a backdrop click: the dialog itself is the target then, not
+  // its content.
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    const onClick = (e: MouseEvent) => {
+      if (e.target === dialog) dialog.close();
+    };
+    dialog.addEventListener("click", onClick);
+    return () => dialog.removeEventListener("click", onClick);
+  }, [ref]);
+
   return (
-    <dialog
-      ref={ref}
-      className="modal"
-      aria-label={title}
-      onClick={(e) => {
-        // Backdrop click: the dialog itself is the target, not its content.
-        if (e.target === e.currentTarget) e.currentTarget.close();
-      }}
-    >
+    <dialog ref={ref} className="modal" aria-label={title}>
       <div className="modal-body">
         <h2 className="modal-title">{title}</h2>
         {children}
         <form method="dialog" className="modal-actions">
-          <button className="secondary">close</button>
+          <button type="submit" className="secondary">
+            close
+          </button>
         </form>
       </div>
     </dialog>

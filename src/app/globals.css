@@ -510,6 +510,105 @@ button {
   }
 }
 
+/* Boot screen: over everything from first paint, gone 420ms later. Every
+   part runs on CSS so it needs no JavaScript to play or to finish. */
+
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  background: var(--bg);
+  animation: boot-out 80ms steps(2, end) 340ms forwards;
+}
+
+@keyframes boot-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot {
+    display: none;
+  }
+}
+
+.boot-head {
+  width: 54px;
+  height: 42px;
+}
+
+.boot-eye {
+  animation: boot-blink 320ms steps(1, end) infinite;
+}
+
+.boot-ant {
+  animation: boot-blink 160ms steps(1, end) infinite;
+}
+
+@keyframes boot-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.boot-bar {
+  display: flex;
+  gap: 3px;
+}
+
+.boot-bar span {
+  width: 12px;
+  height: 8px;
+  background: #1c1c1c;
+  animation: boot-fill 1ms steps(1, end) forwards;
+}
+
+@keyframes boot-fill {
+  to {
+    background: var(--accent);
+  }
+}
+
+.boot-text {
+  display: grid;
+  font-family: var(--pixel);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.boot-text span {
+  grid-area: 1 / 1;
+  text-align: center;
+}
+
+.boot-busy {
+  animation: boot-swap 1ms steps(1, end) 240ms forwards;
+}
+
+.boot-ready {
+  opacity: 0;
+  animation: boot-show 1ms steps(1, end) 240ms forwards;
+}
+
+@keyframes boot-swap {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes boot-show {
+  to {
+    opacity: 1;
+  }
+}
+
 /* Narrow screens: one column, the page scrolls instead of the list */
 
 @media (max-width: 860px) {
